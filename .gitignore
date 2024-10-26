@@ -1,1 +1,4 @@
-/bazel-*
+bazel-*
+tools/
+external/
+compile_commands.json
