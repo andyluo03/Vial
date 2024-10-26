@@ -1,1 +1,2 @@
-/root/Vial/compile_flags.txt
+-std=c++20
+-fcoroutines
