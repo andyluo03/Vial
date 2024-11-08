@@ -27,7 +27,7 @@ class Queue {
 template <typename T>
 void Queue<T>::enqueue (T a) {
     std::lock_guard<std::mutex> lock(lock_);
-    contents_[read_ptr_] = a;
+    contents_[write_ptr_] = a;
     write_ptr_ = (write_ptr_ + 1) % kMaxQueueSize;
     size_++;
 }
