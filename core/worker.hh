@@ -14,6 +14,7 @@ class Worker {
     Worker(Queue<TaskBase*>*);
     void stop();
     void start();
+    void enqueue(TaskBase*);
 
   private:
     Queue<TaskBase*>* queue_;

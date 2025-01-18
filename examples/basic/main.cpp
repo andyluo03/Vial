@@ -1,44 +1,25 @@
 #include "core/engine.hh"
 #include "core/task.hh"
-#include "core/dispatcher.hh"
-
+#include "core/async_main.hh"
 #include <chrono>
 #include <iostream>
 #include <thread>
 #include <sstream>
 
-template <typename T>
-using Task = vial::Task<T>;
+vial::Task<int> bar(int a) {
+    std::cout << "Bar: " << a << " on thread: " << std::this_thread::get_id() << std::endl;
 
-Task<int> foo (int n) {
-    std::stringstream s; s << "Calling foo(" << n << ") on thread: " << std::this_thread::get_id() << std::endl; std::cerr << s.str();
-    co_return n;
+    co_return a + 5;
 }
 
-Task<int> bar (int n) {
-    std::stringstream s; s << "Begin bar(" << n << ") on thread: " << std::this_thread::get_id() << std::endl; std::cerr << s.str();
-    co_await foo(n);
+vial::Task<int> foo(int a) {
+    co_return co_await bar(a) + co_await bar(a + 7);
+}
 
-    std::stringstream t; t << "Finishing bar(" << n << ") on thread: " << std::this_thread::get_id() << std::endl; std::cerr << t.str();
+vial::Task<int> async_main() {
+    int result = co_await foo(7);
+
+    std::cout << "Foo: " << result << " on thread: " << std::this_thread::get_id() << std::endl;
+
     co_return 1;
-}
-
-class BasicDispatcher : public vial::Dispatcher {
-  public:
-    BasicDispatcher () = default;
-
-    virtual vial::TaskBase* dispatch () override {
-        std::stringstream s; s << "Dispatching from thread: " << std::this_thread::get_id() << std::endl; std::cerr << s.str();
-
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        return new Task<int>(bar( rand() % 2048 ));
-    }
-
-};
-
-int main () {
-    vial::Dispatcher* io = new BasicDispatcher();
-    vial::Engine a(io);
-
-    a.start();
 }
