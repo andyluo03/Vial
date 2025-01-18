@@ -9,9 +9,10 @@ Worker::Worker(Queue<TaskBase*>* queue) : queue_{queue}, running_{true} {}
 
 void Worker::start() {
     while ( running_ ) {
+        // Ownership is transferred from queue_ to task. 
         TaskBase* task = queue_->get();
         TaskState state = task->run();
-
+        
         switch ( state ) {
             case TaskState::kAwaiting: {
                 if ( task->awaiting() != nullptr ) {
@@ -19,9 +20,12 @@ void Worker::start() {
                 }
             } break;
             case TaskState::kComplete: {
-                if ( task->callback() != nullptr ) {
-                    queue_->enqueue(task->callback());
+                // Ownership of the callbacks is transferred to the queue. 
+                for ( auto i : task->callbacks() ) {
+                    queue_->enqueue(i);
                 }
+
+                //task->destroy() //unnecessary as successful completion *should* destroy the underlying coroutine.
             } break;
         }
     }
