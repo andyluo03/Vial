@@ -2,6 +2,8 @@
 
 #include <coroutine>
 #include <vector>
+#include <iostream>
+#include <atomic>
 
 namespace vial {
 
@@ -33,8 +35,23 @@ class TaskBase {
     //! Get an pointer to a clone of TaskBase (points to the same underlying coroutine)
     virtual TaskBase* clone() = 0;
 
+    //! Returns whether or not the current task has been queued.
+    virtual bool enqueued () = 0;
+
+    //! 
+    virtual void set_enqueued () = 0;
+
+    //!
+    virtual TaskState get_state () = 0;
+
     //! Destroys the underlying coroutine (this should happen on co_return).
     virtual void destroy() = 0;
+
+    //! 
+    virtual void register_callback(TaskBase*) = 0;
+
+    //!
+    virtual void print_promise_addr() = 0;
 
     virtual ~TaskBase() {}
 };
@@ -66,41 +83,43 @@ class Task : public TaskBase {
         //!
         std::suspend_always initial_suspend() { return {}; }
 
-        //!
+        //! Returning suspend_always means we must manually handle lifetimes
         std::suspend_always final_suspend() noexcept { return {}; } 
 
         //! On `co_return x` what state should the
-        void return_value (T x) {
-            result_ = x;
+        void return_value (std::atomic<T> x) {
+            result_ = x.load();
             state_ = kComplete;
         }
 
         //! Handler for unhandled exceptions. 
         void unhandled_exception() {}
         
-        private:
+        //private:
           TaskState state_;
-          T result_;
-          TaskBase* awaiting_;
+          
+          TaskBase* awaiting_ = nullptr;
           std::vector<TaskBase*> callbacks_;
+          
+          bool enqueued_ = false;
+          std::atomic<T> result_;
 
         friend Task<T>;
     };
 
-    //! Handler for 
-    bool await_ready () const noexcept { 
-      return handle_.promise().state_ == TaskState::kComplete;
+    //! Is the (outside) task ready?
+    bool await_ready () const noexcept {
+      return false;//this->handle_.promise().state_ == TaskState::kComplete;
     }
 
     //! Handler for co_await where `this` is the task begin awaited upon. 
+    /*! Suspicious...
+    */
     template <typename S>
     void await_suspend(std::coroutine_handle<S> awaitee) noexcept {
       // Propogated to workers to enqueue the awaited upon task. 
-      awaitee.promise().awaiting_ = this;
-
-      // Allows the awaited upon task to callback on completion. 
-      handle_.promise().callbacks_.push_back(new Task<T>{awaitee});
-    } 
+      awaitee.promise().awaiting_ = new Task<T>{*this};
+    }
 
     //! Handler for returning a value 
     /*!
@@ -111,7 +130,7 @@ class Task : public TaskBase {
       co_await foo(); // the value here is the return value of await_resume();
     */
     T await_resume() const noexcept {
-      return handle_.promise().result_;
+      return (handle_.promise().result_).load();
     }
 
     //! Construct a Task from a coroutine handle.
@@ -131,12 +150,35 @@ class Task : public TaskBase {
       return new Task<T>(*this);
     }
 
+    virtual bool enqueued () override {
+      return this->handle_.promise().enqueued_;
+    }
+
+    virtual void set_enqueued () override {
+      this->handle_.promise().enqueued_ = true;
+    }
+
+        //!
+    virtual TaskState get_state () override {
+      return this->handle_.promise().state_;
+    }
+
+    //!
+    virtual void register_callback (TaskBase* x) override {
+      this->handle_.promise().callbacks_.push_back(x->clone());
+    }
+
     //! 
     virtual void destroy () override {
       handle_.destroy();
     }
 
-  private:
+     //!
+    virtual void print_promise_addr() override {
+      std::cout << handle_.address() << std::endl;
+    }
+
+  //private:
     promise_type::Handle handle_;
 };
 

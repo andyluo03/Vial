@@ -1,14 +1,17 @@
 #include "task.hh"
 #include "engine.hh"
 #include <iostream>
-vial::Engine engine;
+
+namespace vial {
+    Engine Vial{};
+}
 
 extern vial::Task<int> async_main();
 
 int main () {
-    auto entry = new vial::Task<int>(async_main());
-    engine.fire_and_forget( entry );
-    engine.start();
-    delete entry;
+    auto entry = vial::Task<int>( async_main() );
+    vial::Vial.fire_and_forget( entry );
+    vial::Vial.start();
+    //vial::Vial.shutdown();
     return 1;
 }

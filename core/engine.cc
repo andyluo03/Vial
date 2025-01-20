@@ -19,8 +19,4 @@ void Engine::start () {
 
 Engine::~Engine() = default;
 
-void Engine::fire_and_forget(TaskBase* x) {
-    queue_.enqueue(x);
-}
-
 }
