@@ -20,7 +20,6 @@ vial::Task<int> async_main() {
     int result = co_await foo(7);
 
     std::cout << result << std::endl;
-
     
     co_return 1;
 }
