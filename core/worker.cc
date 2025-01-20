@@ -35,7 +35,7 @@ void Worker::start() {
                     queue_->enqueue(task);
             } break;
             case TaskState::kComplete: {
-                //task->destroy() //unnecessary as successful completion *should* destroy the underlying coroutine.
+                task->destroy();
             } break;
         }
     }
