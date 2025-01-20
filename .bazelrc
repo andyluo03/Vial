@@ -1,20 +1,20 @@
 build --cxxopt='-std=c++20'
-build --config=detect_os
 
-common:detect_os --config=linux
-common:detect_os --config=macos
-
-build:macos --cpu=darwin_arm64
 build:linux --cpu=k8
+build:linux --repo_env=CC=gcc
+build:linux --repo_env=CXX=g++
+build:linux --cxxopt='-fcoroutines'
 
-build:darwin_arm64 --repo_env=CC=/opt/homebrew/opt/llvm/bin/clang
-build:darwin_arm64 --repo_env=CXX=/opt/homebrew/opt/llvm/bin/clang++
-build:darwin_arm64 --cxxopt='-fcoroutines-ts'
+build:macos_arm64 --cpu=darwin_arm64
+build:macos_arm64 --repo_env=CC=/opt/homebrew/opt/llvm/bin/clang
+build:macos_arm64 --repo_env=CXX=/opt/homebrew/opt/llvm/bin/clang++
+build:macos_arm64 --cxxopt='-fcoroutines-ts'
 
-build:darwin_x86_64 --repo_env=CC=/usr/local/opt/llvm/bin/clang
-build:darwin_x86_64 --repo_env=CXX=/usr/local/opt/llvm/bin/clang++
-build:darwin_x86_64 --cxxopt='-fcoroutines-ts'
+build:macos_x86 --cpu=darwin_x86_64
+build:macos_x86 --repo_env=CC=/usr/local/opt/llvm/bin/clang
+build:macos_x86 --repo_env=CXX=/usr/local/opt/llvm/bin/clang++
+build:macos_x86 --cxxopt='-fcoroutines-ts'
 
-build:k8 --repo_env=CC=gcc
-build:k8 --repo_env=CXX=g++
-build:k8 --cxxopt='-fcoroutines'
+build --enable_platform_specific_config
+
+try-import %workspace%/.bazelrc.user

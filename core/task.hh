@@ -2,6 +2,7 @@
 
 #include <coroutine>
 #include <atomic>
+#include <functional>
 
 namespace vial {
 
@@ -25,6 +26,19 @@ class TaskBase {
     virtual TaskBase* awaiting () = 0;
     virtual TaskBase* callback () = 0;
     virtual ~TaskBase() {}
+
+    void set_completion_callback(std::function<void()> cb) {
+        on_complete_ = std::move(cb);
+    }
+
+    void notify_complete() {
+        if (on_complete_) {
+            on_complete_();
+        }
+    }
+
+  private:
+    std::function<void()> on_complete_;
 };
 
 template <typename T>
@@ -109,9 +123,48 @@ class Task : public TaskBase {
 
 template<>
 class Task<void> : public TaskBase {
-  virtual TaskState run () override {
-    return TaskState::kComplete;
-  }
+  public:
+    TaskState run() override {
+        handle_.resume();
+        return { handle_.promise().state_ };
+    }
+
+    TaskBase* awaiting() override {
+        return handle_.promise().awaiting_;
+    }
+
+    TaskBase* callback() override {
+        return handle_.promise().callback_;
+    }
+
+    struct promise_type {
+        using Handle = std::coroutine_handle<promise_type>;
+        
+        Task<void> get_return_object() { return Task{Handle::from_promise(*this)}; }
+        std::suspend_always initial_suspend() { return {}; }
+        std::suspend_always final_suspend() noexcept { return {}; }
+        void return_void() { state_ = kComplete; }
+        void unhandled_exception() {}
+
+        TaskState state_{kAwaiting};
+        TaskBase* awaiting_{nullptr};
+        TaskBase* callback_{nullptr};
+
+        friend class Task;
+    };
+
+    bool await_ready() const noexcept {
+        return handle_.promise().state_ == TaskState::kComplete;
+    }
+
+    void await_resume() const noexcept {}
+
+    explicit Task(const typename promise_type::Handle handle) 
+        : handle_{handle}, counter_{new std::atomic<int>(1)} {}
+
+  private:
+    promise_type::Handle handle_;
+    std::atomic<int>* counter_;
 };
 
 
