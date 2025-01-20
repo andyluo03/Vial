@@ -18,7 +18,11 @@ class Engine {
 
     void start();
 
-    void fire_and_forget(TaskBase*);
+    template <typename T>
+    void fire_and_forget(Task<T>);
+
+    template <typename T>
+    Task<T> spawn_task(Task<T>);
 
     ~Engine();
 
@@ -32,5 +36,19 @@ class Engine {
     size_t num_dispatchers_;
     size_t num_workers_;
 };
+
+template <typename T>
+void Engine::fire_and_forget (Task<T> x) {
+    queue_.enqueue(new Task<T>(x));
+    x.set_enqueued();
+}
+
+template <typename T>
+Task<T> Engine::spawn_task (Task<T> x) {
+  this->fire_and_forget(x);
+  return x;
+}
+
+
 
 }
