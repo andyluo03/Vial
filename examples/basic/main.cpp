@@ -1,10 +1,7 @@
-#include "core/engine.hh"
 #include "core/task.hh"
 #include "core/async_main.hh"
-#include <chrono>
 #include <iostream>
 #include <thread>
-#include <sstream>
 
 vial::Task<int> bar(int a) {
     std::cout << "Bar: " << a << " on thread: " << std::this_thread::get_id() << std::endl;

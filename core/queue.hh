@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <iostream>
+#include <optional>
 
 namespace vial {
 
@@ -13,7 +14,7 @@ class Queue {
     Queue() = default;
 
     void enqueue(T);
-    T get();
+    std::optional<T> get();
 
   private:
     T contents_[kMaxQueueSize];
@@ -27,25 +28,30 @@ class Queue {
 template <typename T>
 void Queue<T>::enqueue (T a) {
     std::lock_guard<std::mutex> lock(lock_);
+
     contents_[write_ptr_] = a;
     write_ptr_ = (write_ptr_ + 1) % kMaxQueueSize;
     size_++;
 }
 
 template <typename T>
-T Queue<T>::get() {
-    while (true) {
-        std::lock_guard<std::mutex> lock(lock_);
+std::optional<T> Queue<T>::get() {
+    if ( lock_.try_lock() ) {
 
         if (size_ > 0) {
             auto res = contents_[read_ptr_];
 
             read_ptr_ = (read_ptr_ + 1) % kMaxQueueSize;
             size_--;
-
+            
+            lock_.unlock();
             return res;
         }
+
+        lock_.unlock();
     }
+    
+    return std::nullopt;
 }
 
 }

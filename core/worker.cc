@@ -4,7 +4,7 @@
 
 namespace vial {
 
-Worker::Worker(Queue<TaskBase*>* queue) : queue_{queue}, running_{true} {}
+Worker::Worker(Queue<TaskBase*>* queue, std::atomic<bool>* running) : queue_{queue}, running_{running} {}
 
 //! Start a worker thread. 
 /*! 
@@ -13,9 +13,16 @@ Worker::Worker(Queue<TaskBase*>* queue) : queue_{queue}, running_{true} {}
 Life-cycle of a Task.
 */
 void Worker::start() {
-    while ( running_ ) {
+    while ( *running_ ) {
         // Ownership is transferred from queue_ to task. 
-        TaskBase* task = queue_->get();
+        std::optional<TaskBase*> task_opt = queue_->get();
+
+        if (task_opt == std::nullopt) { 
+            sched_yield();
+            continue; 
+        }
+
+        auto task = task_opt.value();
 
         if (task->awaiting() != nullptr && task->awaiting()->get_state() != TaskState::kComplete) {
             queue_->enqueue(task);
@@ -37,12 +44,15 @@ void Worker::start() {
             case TaskState::kComplete: {
                 task->destroy();
             } break;
+            case TaskState::kStop: {
+                this->stop();
+            } break;
         }
     }
 };
 
 void Worker::stop() {
-    running_ = false;
+    *running_ = false;
 }
 
 void Worker::enqueue(TaskBase* x) {

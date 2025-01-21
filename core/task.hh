@@ -8,8 +8,11 @@ namespace vial {
 
 enum TaskState {
   kAwaiting,
-  kComplete
+  kComplete,
+  kStop
 };
+
+struct kStopper {};
 
 //! TaskBase is a type-erased base class for Task<T> used for callbacks. 
 class TaskBase {
@@ -129,7 +132,7 @@ class Task : public TaskBase {
       co_await foo(); // the value here is the return value of await_resume();
     */
     T await_resume() const noexcept {
-      return (handle_.promise().result_).load();
+      return handle_.promise().result_;
     }
 
     //! Construct a Task from a coroutine handle.
