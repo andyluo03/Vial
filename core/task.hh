@@ -139,8 +139,6 @@ class Task : public TaskBase {
       co_await foo(); // the value here is the return value of await_resume();
     */
     T await_resume() const noexcept {
-      assert( handle_.promise().state_ == TaskState::kComplete);
-      assert (handle_.promise().result_ == 1);
       return handle_.promise().result_;
     }
 
