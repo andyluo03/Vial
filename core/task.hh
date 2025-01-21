@@ -3,7 +3,6 @@
 #include <coroutine>
 #include <vector>
 #include <iostream>
-#include <atomic>
 
 namespace vial {
 
@@ -87,8 +86,8 @@ class Task : public TaskBase {
         std::suspend_always final_suspend() noexcept { return {}; } 
 
         //! On `co_return x` what state should the
-        void return_value (std::atomic<T> x) {
-            result_ = x.load();
+        void return_value (T x) {
+            result_ = x;
             state_ = kComplete;
         }
 
@@ -102,7 +101,7 @@ class Task : public TaskBase {
           std::vector<TaskBase*> callbacks_;
           
           bool enqueued_ = false;
-          std::atomic<T> result_;
+          T result_;
 
         friend Task<T>;
     };
