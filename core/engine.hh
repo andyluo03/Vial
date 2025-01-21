@@ -24,6 +24,8 @@ class Engine {
     template <typename T>
     Task<T> spawn_task(Task<T>);
 
+    std::atomic<bool>* get_running();
+
     ~Engine();
 
   private:
@@ -35,6 +37,8 @@ class Engine {
 
     size_t num_dispatchers_;
     size_t num_workers_;
+
+    std::atomic<bool> running_{true};
 };
 
 template <typename T>

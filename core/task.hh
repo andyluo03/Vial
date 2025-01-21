@@ -9,8 +9,11 @@ namespace vial {
 
 enum TaskState {
   kAwaiting,
-  kComplete
+  kComplete,
+  kStop
 };
+
+struct kStopper {};
 
 //! TaskBase is a type-erased base class for Task<T> used for callbacks. 
 class TaskBase {
@@ -86,24 +89,24 @@ class Task : public TaskBase {
         //! Returning suspend_always means we must manually handle lifetimes
         std::suspend_always final_suspend() noexcept { return {}; } 
 
-        //! On `co_return x` what state should the
-        void return_value (std::atomic<T> x) {
-            result_ = x.load();
+        //! On `co_return x` what set state. 
+        void return_value (T x) {
+            result_ = x;
             state_ = kComplete;
         }
 
         //! Handler for unhandled exceptions. 
         void unhandled_exception() {}
         
-        //private:
+        private:
           TaskState state_;
           
           TaskBase* awaiting_ = nullptr;
           std::vector<TaskBase*> callbacks_;
           
           bool enqueued_ = false;
-          std::atomic<T> result_;
 
+          T result_;
         friend Task<T>;
     };
 
@@ -118,6 +121,12 @@ class Task : public TaskBase {
     template <typename S>
     void await_suspend(std::coroutine_handle<S> awaitee) noexcept {
       // Propogated to workers to enqueue the awaited upon task. 
+      if (handle_.promise().state_ == TaskState::kComplete) {
+          if(handle_.promise().result_ == 0) {
+            std::cout << "zzz" << std::endl;
+          }
+      }
+        
       awaitee.promise().awaiting_ = new Task<T>{*this};
     }
 
@@ -130,7 +139,7 @@ class Task : public TaskBase {
       co_await foo(); // the value here is the return value of await_resume();
     */
     T await_resume() const noexcept {
-      return (handle_.promise().result_).load();
+      return handle_.promise().result_;
     }
 
     //! Construct a Task from a coroutine handle.
