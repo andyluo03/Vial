@@ -121,12 +121,6 @@ class Task : public TaskBase {
     template <typename S>
     void await_suspend(std::coroutine_handle<S> awaitee) noexcept {
       // Propogated to workers to enqueue the awaited upon task. 
-      if (handle_.promise().state_ == TaskState::kComplete) {
-          if(handle_.promise().result_ == 0) {
-            std::cout << "zzz" << std::endl;
-          }
-      }
-        
       awaitee.promise().awaiting_ = new Task<T>{*this};
     }
 

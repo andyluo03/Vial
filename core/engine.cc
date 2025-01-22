@@ -15,6 +15,7 @@ void Engine::start () {
     }
 
     for (auto& i : worker_pool_) { i.join(); }
+    worker_pool_.clear();
 }
 
 std::atomic<bool>* Engine::get_running() {
