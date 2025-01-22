@@ -28,6 +28,10 @@ void Worker::start() {
             queue_->enqueue(task);
             continue;
         }
+
+        if (task->awaiting() != nullptr) {
+            task->awaiting()->destroy();
+        }
  
         TaskState state = task->run();
 

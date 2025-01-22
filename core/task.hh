@@ -111,7 +111,7 @@ class Task : public TaskBase {
 
     //! Is the (outside) task ready?
     bool await_ready () const noexcept {
-      return false;//this->handle_.promise().state_ == TaskState::kComplete;
+      return false;
     }
 
     //! Handler for co_await where `this` is the task begin awaited upon. 
