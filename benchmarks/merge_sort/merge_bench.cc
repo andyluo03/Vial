@@ -1,9 +1,5 @@
 #include <algorithm>
 #include <benchmark/benchmark.h>
-#include <chrono>
-#include <future>
-#include <ratio>
-#include <string>
 #include <vector>
 
 #include "core/task.hh"
@@ -11,9 +7,6 @@
 #include <algorithm>
 
 constexpr size_t kSmallBenchSize = 15;
-
-// Current implementation is too slow to handle 100 within GBENCH.
-constexpr size_t kMediumBenchSize = 100;
 
 // sorts input from [left, right)
 vial::Task<int> merge_sort (vial::Engine* engine, std::vector<int>* input, int left, int right) {
@@ -77,63 +70,40 @@ vial::Task<int> wrapped_main (vial::Engine* engine, std::atomic<bool>* stopper, 
 
 static void BM_parallel_small(benchmark::State& s) {
     vial::Engine scheduler;
-    std::vector<int> a;
-
-    for (int i = 0; i < kSmallBenchSize; i++) {
-        a.push_back(i % 10);
-    }
-    
-    scheduler.fire_and_forget( wrapped_main(&scheduler, scheduler.get_running(), &a)  );
 
     for (auto _ : s) {
+        std::vector<int> a;
+        for (int i = 0; i < kSmallBenchSize; i++) {
+            a.push_back(i % 10);
+        }
+
+        scheduler.fire_and_forget( wrapped_main(&scheduler, scheduler.get_running(), &a)  );
         scheduler.start();
+
+        for (int i = 0; i < a.size(); i++) {
+            benchmark::DoNotOptimize(a[i]);
+        }
     }
 }
 
 static void BM_std_small(benchmark::State& s) {
-    std::vector<int> a;
-
-    for (int i = 0; i < kSmallBenchSize; i++) {
-        a.push_back(i % 10);
-    }
-
     for (auto _ : s) {
+        std::vector<int> a;
+
+        for (int i = 0; i < kSmallBenchSize; i++) {
+            a.push_back(i % 10);
+        }
+
         sort(a.begin(), a.end());
-    }
-}
 
-static void BM_parallel_medium(benchmark::State& s) {
-    vial::Engine scheduler;
-    std::vector<int> a;
-
-    for (int i = 0; i < kMediumBenchSize; i++) {
-        a.push_back(i % 10);
-    }
-    
-    scheduler.fire_and_forget( wrapped_main(&scheduler, scheduler.get_running(), &a)  );
-
-    for (auto _ : s) {
-        scheduler.start();
-    }
-}
-
-static void BM_std_medium(benchmark::State& s) {
-    std::vector<int> a;
-
-    for (int i = 0; i < kMediumBenchSize; i++) {
-        a.push_back(i % 10);
-    }
-
-    for (auto _ : s) {
-        sort(a.begin(), a.end());
+        for (int i = 0; i < a.size() - 1; i++) {
+            benchmark::DoNotOptimize(a[i]);
+        }
     }
 }
 
 
-BENCHMARK(BM_parallel_small)->Iterations(1);
-BENCHMARK(BM_std_small)->Iterations(1);
-//BENCHMARK(BM_parallel_medium)->Iterations(1);
-//BENCHMARK(BM_std_medium)->Iterations(1);
-
+BENCHMARK(BM_parallel_small)->Iterations(10);
+BENCHMARK(BM_std_small)->Iterations(10);
 
 BENCHMARK_MAIN();
