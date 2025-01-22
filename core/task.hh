@@ -3,7 +3,6 @@
 #include <coroutine>
 #include <vector>
 #include <iostream>
-#include <atomic>
 
 namespace vial {
 

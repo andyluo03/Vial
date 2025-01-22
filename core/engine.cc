@@ -22,6 +22,10 @@ std::atomic<bool>* Engine::get_running() {
     return &running_;
 }
 
-Engine::~Engine() = default;
+Engine::~Engine() {
+    if (worker_ != nullptr) {
+        delete worker_;
+    }
+}
 
 }
