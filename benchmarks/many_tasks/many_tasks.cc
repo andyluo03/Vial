@@ -1,6 +1,8 @@
 #include <benchmark/benchmark.h>
+#include <cstdlib>
 #include <vector>
 #include <iostream>
+#include <cstdlib>
 
 #include "core/engine.hh"
 
@@ -14,6 +16,7 @@ vial::Task<int> foo () {
 
 vial::Task<int> bar (vial::Engine* engine, int num_tasks, std::atomic<int>* result) {
     std::vector<vial::Task<int>> tasks;
+    srand(time(NULL));
 
     for (int i = 0; i < num_tasks; i++) {
         tasks.push_back(engine->spawn_task(foo()));
@@ -34,6 +37,7 @@ vial::Task<int> bar (vial::Engine* engine, int num_tasks, std::atomic<int>* resu
 static void BM_small(benchmark::State& s) {
     std::atomic<int> result{0};
     vial::Engine scheduler;
+    srand(time(NULL));
 
 
     for (auto _ : s) {
@@ -41,8 +45,6 @@ static void BM_small(benchmark::State& s) {
         scheduler.start();
         benchmark::DoNotOptimize( result.load() );
     }
-
-    std::cout << result.load() << std::endl;
 }
 
 static void BM_medium(benchmark::State& s) {
@@ -54,11 +56,9 @@ static void BM_medium(benchmark::State& s) {
         scheduler.start();
         benchmark::DoNotOptimize( result.load() );
     }
-
-    std::cout << result.load() << std::endl;
 }
 
-BENCHMARK(BM_small)->Iterations(10);
-BENCHMARK(BM_medium)->Iterations(10);
+BENCHMARK(BM_small)->Iterations(50);
+BENCHMARK(BM_medium)->Iterations(50);
 
 BENCHMARK_MAIN();
