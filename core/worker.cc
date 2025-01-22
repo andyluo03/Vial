@@ -42,7 +42,6 @@ void Worker::start() {
                     queue_->enqueue(task);
             } break;
             case TaskState::kComplete: {
-                //task->destroy();
             } break;
             case TaskState::kStop: {
                 this->stop();
