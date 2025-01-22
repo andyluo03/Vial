@@ -3,8 +3,8 @@
 
 namespace vial {
 
-Engine::Engine (size_t num_workers, size_t num_dispatchers)
-    : num_dispatchers_{num_dispatchers}, num_workers_{num_workers} {}
+Engine::Engine (size_t num_workers)
+    : num_workers_{num_workers} {}
     
 void Engine::start () {
     worker_ = new Worker(&queue_, &running_);

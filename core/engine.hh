@@ -12,8 +12,7 @@ namespace vial {
 class Engine {
   public:
     Engine (
-      size_t num_workers = std::max(static_cast<int>(std::thread::hardware_concurrency()) - 2, 2), 
-      size_t num_dispatchers = 1
+      size_t num_workers = std::max(static_cast<int>(std::thread::hardware_concurrency()) - 2, 2)
     );
 
     void start();
@@ -32,10 +31,7 @@ class Engine {
     Queue<TaskBase*> queue_;
     Worker* worker_;
 
-    std::vector<std::thread> dispatcher_pool_;
     std::vector<std::thread> worker_pool_;
-
-    size_t num_dispatchers_;
     size_t num_workers_;
 
     std::atomic<bool> running_{true};
