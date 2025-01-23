@@ -9,10 +9,10 @@
 
 namespace vial {
 
-class Engine {
+class Scheduler {
   public:
-    Engine (
-      size_t num_workers = std::max(static_cast<int>(std::thread::hardware_concurrency()) - 2, 2)
+    Scheduler (
+      size_t num_workers = 8
     );
 
     void start();
@@ -25,7 +25,7 @@ class Engine {
 
     std::atomic<bool>* get_running();
 
-    ~Engine();
+    ~Scheduler();
 
   private:
     Queue<TaskBase*> queue_;
@@ -38,13 +38,13 @@ class Engine {
 };
 
 template <typename T>
-void Engine::fire_and_forget (Task<T> x) {
+void Scheduler::fire_and_forget (Task<T> x) {
+    x.set_enqueued_true();
     queue_.enqueue(new Task<T>(x));
-    x.set_enqueued();
 }
 
 template <typename T>
-Task<T> Engine::spawn_task (Task<T> x) {
+Task<T> Scheduler::spawn_task (Task<T> x) {
   this->fire_and_forget(x);
   return x;
 }

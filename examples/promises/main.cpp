@@ -1,9 +1,8 @@
 #include "core/task.hh"
 #include "core/async_main.hh"
 
+#include <cassert>
 #include <iostream>
-#include <thread>
-#include <coroutine>
 #include <vector>
 
 vial::Task<int> foo() {
@@ -31,6 +30,5 @@ vial::Task<int> async_main() {
     auto result = vial::Vial.spawn_task(bar());
 
     std::cout << (co_await result) << std::endl;
-
     co_return 1;
 }

@@ -15,40 +15,54 @@ Life-cycle of a Task.
 void Worker::start() {
     while ( *running_ ) {
         // Ownership is transferred from queue_ to task. 
-        std::optional<TaskBase*> task_opt = queue_->get();
+        std::optional<TaskBase*> task_opt = queue_->try_get();
 
+        // Minimize this.
         if (task_opt == std::nullopt) { 
             sched_yield();
-            continue; 
+            continue; // no available tasks
         }
 
         auto task = task_opt.value();
 
-        if (task->awaiting() != nullptr && task->awaiting()->get_state() != TaskState::kComplete) {
+        if (task->get_awaiting() != nullptr && task->get_awaiting()->get_state() != TaskState::kComplete) {
             queue_->enqueue(task);
             continue;
         }
 
-        if (task->awaiting() != nullptr) {
-            task->awaiting()->destroy();
-        }
- 
         TaskState state = task->run();
 
         switch ( state ) {
+            // We want this to be == to time co_await is called.
             case TaskState::kAwaiting: {
-                    // Check if the awaiting task is queued. 
-                    if (!task->awaiting()->enqueued()) {
-                        queue_->enqueue(task->awaiting());
-                        task->awaiting()->set_enqueued();
-                    }
+                    auto awaiting_on = task->get_awaiting();
+                    assert(awaiting_on != nullptr);
 
-                    queue_->enqueue(task);
+                    // Awaiting on hasn't been spawned yet. 
+                    if (!awaiting_on->enqueued()) { 
+                        task->set_enqueued_false();
+
+                        awaiting_on->set_callback(task);
+                        awaiting_on->set_enqueued_true();
+                        queue_->enqueue(awaiting_on);
+                    } 
+                    // Awaiting on has been spawned already.
+                    else {
+                        // Race conditions (?)
+                        queue_->enqueue(task);
+                    }
             } break;
             case TaskState::kComplete: {
-            } break;
-            case TaskState::kStop: {
-                this->stop();
+                // Push onto queue any callbacks. 
+                auto callback = task->get_callback();
+
+                // Enqueue callback (if exists).
+                if (callback != nullptr && callback->enqueued() == false) {
+                    callback->set_enqueued_true();
+                    queue_->enqueue(callback);
+                    continue;
+                } 
+
             } break;
         }
     }

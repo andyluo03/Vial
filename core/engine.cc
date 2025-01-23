@@ -3,10 +3,10 @@
 
 namespace vial {
 
-Engine::Engine (size_t num_workers)
+Scheduler::Scheduler (size_t num_workers)
     : num_workers_{num_workers} {}
     
-void Engine::start () {
+void Scheduler::start () {
     worker_ = new Worker(&queue_, &running_);
     for (int i = 0; i < num_workers_; i++) {
         worker_pool_.push_back(
@@ -18,11 +18,11 @@ void Engine::start () {
     worker_pool_.clear();
 }
 
-std::atomic<bool>* Engine::get_running() {
+std::atomic<bool>* Scheduler::get_running() {
     return &running_;
 }
 
-Engine::~Engine() {
+Scheduler::~Scheduler() {
     if (worker_ != nullptr) {
         delete worker_;
     }

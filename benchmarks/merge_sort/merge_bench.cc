@@ -6,19 +6,17 @@
 #include "core/engine.hh"
 #include <algorithm>
 
-constexpr size_t kSmallBenchSize = 15;
+constexpr size_t kSmallBenchSize = 512;
+constexpr size_t kMediumBenchSize = 1e6;
 
 // sorts input from [left, right)
-vial::Task<int> merge_sort (vial::Engine* engine, std::vector<int>* input, int left, int right) {
+vial::Task<int> merge_sort (vial::Scheduler* engine, std::vector<int>* input, int left, int right) {
     if (right - left <= 1) {
         co_return 1;
     }
 
-    if (right - left == 2) {
-        if ( (*input)[left] > (*input)[left+1]) {
-            std::swap((*input)[left], (*input)[left+1]);
-        }
-
+    if (right - left <= 256) {
+        std::sort(input->begin() + left, input->begin() + right);
         co_return 1;
     }
 
@@ -62,14 +60,14 @@ vial::Task<int> merge_sort (vial::Engine* engine, std::vector<int>* input, int l
     co_return 1;
 }
 
-vial::Task<int> wrapped_main (vial::Engine* engine, std::atomic<bool>* stopper, std::vector<int>* a) {
+vial::Task<int> wrapped_main (vial::Scheduler* engine, std::atomic<bool>* stopper, std::vector<int>* a) {
     co_await merge_sort(engine, a, 0, a->size());
     *stopper = false;
     co_return 1;
 }
 
 static void BM_parallel_small(benchmark::State& s) {
-    vial::Engine scheduler;
+    vial::Scheduler scheduler;
 
     for (auto _ : s) {
         std::vector<int> a;
@@ -102,8 +100,45 @@ static void BM_std_small(benchmark::State& s) {
     }
 }
 
+static void BM_parallel_medium(benchmark::State& s) {
+    vial::Scheduler scheduler;
 
-BENCHMARK(BM_parallel_small)->Iterations(10);
-BENCHMARK(BM_std_small)->Iterations(10);
+    for (auto _ : s) {
+        std::vector<int> a;
+        for (int i = 0; i < kMediumBenchSize; i++) {
+            a.push_back(i % 10);
+        }
+
+        scheduler.fire_and_forget( wrapped_main(&scheduler, scheduler.get_running(), &a)  );
+        scheduler.start();
+
+        for (int i = 0; i < a.size(); i++) {
+            benchmark::DoNotOptimize(a[i]);
+        }
+    }
+}
+
+static void BM_std_medium(benchmark::State& s) {
+    for (auto _ : s) {
+        std::vector<int> a;
+
+        for (int i = 0; i < kMediumBenchSize; i++) {
+            a.push_back(i % 10);
+        }
+
+        sort(a.begin(), a.end());
+
+        for (int i = 0; i < a.size() - 1; i++) {
+            benchmark::DoNotOptimize(a[i]);
+        }
+    }
+}
+
+
+
+BENCHMARK(BM_parallel_small);
+BENCHMARK(BM_std_small);
+BENCHMARK(BM_parallel_medium);
+BENCHMARK(BM_std_medium);
 
 BENCHMARK_MAIN();

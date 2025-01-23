@@ -2,11 +2,13 @@
 
 #include <mutex>
 #include <iostream>
+#include <cassert>
 #include <optional>
+#include <queue>
 
 namespace vial {
 
-constexpr size_t kMaxQueueSize = 4096;
+constexpr size_t kMaxQueueSize = 16384;
 
 template <typename T>
 class Queue {
@@ -14,43 +16,29 @@ class Queue {
     Queue() = default;
 
     void enqueue(T);
-    std::optional<T> get();
+    std::optional<T> try_get();
 
   private:
-    T contents_[kMaxQueueSize];
     std::mutex lock_;
-
-    size_t read_ptr_ = 0;
-    size_t write_ptr_ = 0;
-    size_t size_ = 0;
+    std::queue<T> contents_;
 };
 
 template <typename T>
 void Queue<T>::enqueue (T a) {
     std::lock_guard<std::mutex> lock(lock_);
-
-    contents_[write_ptr_] = a;
-    write_ptr_ = (write_ptr_ + 1) % kMaxQueueSize;
-    size_++;
+    contents_.push(a);
 }
 
 template <typename T>
-std::optional<T> Queue<T>::get() {
-    if ( lock_.try_lock() ) {
+std::optional<T> Queue<T>::try_get() {
+    std::lock_guard<std::mutex> lock(lock_);
 
-        if (size_ > 0) {
-            auto res = contents_[read_ptr_];
-
-            read_ptr_ = (read_ptr_ + 1) % kMaxQueueSize;
-            size_--;
-            
-            lock_.unlock();
-            return res;
-        }
-
-        lock_.unlock();
+    if (contents_.size() > 0) {
+        T res = contents_.front();
+        contents_.pop();
+        return res;
     }
-    
+
     return std::nullopt;
 }
 

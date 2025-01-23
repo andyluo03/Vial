@@ -16,7 +16,7 @@ TEST(QueueTest, SingleThreaded) {
 
   std::set<int> seen;
   for (int i = 0; i < kNumEntries; i++) {
-    int res = tester.get();
+    int res = tester.try_get().value();
     seen.insert(res);
     std::cerr << res << std::endl;
   }
