@@ -50,7 +50,7 @@ class TaskBase {
 };
 
 //! Task<T> wraps a std::coroutine_handle to provide callback logic. 
-template <typename T> requires (std::is_trivially_copyable<T>::value)
+template <typename T> requires (std::is_copy_constructible<T>::value)
 class Task : public TaskBase {
   public:
       //! Underlying heap allocated state of a coroutine.
@@ -74,6 +74,8 @@ class Task : public TaskBase {
 
         //! Handler for unhandled exceptions. 
         void unhandled_exception() {}
+
+        TaskBase*& get_awaiting() { return awaiting_; }
         
         private:
           TaskState state_ = TaskState::kAwaiting;
@@ -101,7 +103,7 @@ class Task : public TaskBase {
     template <typename S>
     void await_suspend(std::coroutine_handle<S> awaitee) noexcept {
       // Propogated to workers to enqueue the awaited upon task. 
-      auto& awaitee_awaiting = awaitee.promise().awaiting_;
+      auto& awaitee_awaiting = awaitee.promise().get_awaiting();
 
       if (awaitee_awaiting != nullptr) {
         delete awaitee_awaiting;
