@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "core/task.hh"
-#include "core/engine.hh"
+#include "core/scheduler.hh"
 #include <algorithm>
 
 constexpr size_t kSmallBenchSize = 512;

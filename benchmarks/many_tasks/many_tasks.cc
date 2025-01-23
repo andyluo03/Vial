@@ -4,7 +4,7 @@
 #include <iostream>
 #include <cstdlib>
 
-#include "core/engine.hh"
+#include "core/scheduler.hh"
 
 constexpr int kNumTasksSmall  = 5;
 constexpr int kNumTasksMedium = 3e3;
@@ -39,7 +39,6 @@ static void BM_small(benchmark::State& s) {
     std::atomic<int> result{0};
     vial::Scheduler scheduler;
     srand(time(NULL));
-
 
     for (auto _ : s) {
         scheduler.fire_and_forget(bar(&scheduler, kNumTasksSmall, &result));
