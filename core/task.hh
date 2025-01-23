@@ -2,17 +2,15 @@
 
 #include <coroutine>
 #include <vector>
+#include <atomic>
 #include <iostream>
 
 namespace vial {
 
 enum TaskState {
   kAwaiting,
-  kComplete,
-  kStop
+  kComplete
 };
-
-struct kStopper {};
 
 //! TaskBase is a type-erased base class for Task<T> used for callbacks. 
 class TaskBase {
@@ -28,31 +26,24 @@ class TaskBase {
     //! Start/resume execution of the underlying coroutine.
     virtual TaskState run () = 0;
 
-    //! Get a pointer to the coroutine being awaited upon. 
-    virtual TaskBase* awaiting () = 0;
-
-    //! Get pointers to callbacks after task completion.
-    virtual std::vector<TaskBase*> callbacks() = 0;
+    //! Get a pointer to the awaiting coroutine.
+    virtual TaskBase* get_awaiting () const = 0;
 
     //! Get an pointer to a clone of TaskBase (points to the same underlying coroutine)
     virtual TaskBase* clone() = 0;
 
-    //! Returns whether or not the current task has been queued.
-    virtual bool enqueued () = 0;
-
     //! 
-    virtual void set_enqueued () = 0;
+    virtual bool enqueued () = 0;
+    virtual void set_enqueued_true () = 0;
+    virtual void set_enqueued_false () = 0;
 
-    //!
-    virtual TaskState get_state () = 0;
+    virtual TaskState get_state () const = 0;
+
+    virtual void set_callback(TaskBase*) = 0;
+    virtual TaskBase* get_callback() const = 0;
 
     //! Destroys the underlying coroutine (this should happen on co_return).
     virtual void destroy() = 0;
-
-    //! 
-    virtual void register_callback(TaskBase*) = 0;
-
-    //!
     virtual void print_promise_addr() = 0;
 
     virtual ~TaskBase() {}
@@ -67,12 +58,8 @@ class Task : public TaskBase {
       return { handle_.promise().state_ };
     }
 
-    virtual TaskBase* awaiting () override {
+    virtual TaskBase* get_awaiting () const override {
       return handle_.promise().awaiting_;
-    }
-
-    virtual std::vector<TaskBase*> callbacks () override {
-      return handle_.promise().callbacks_;
     }
 
     //! Underlying heap allocated state of a coroutine.
@@ -88,7 +75,7 @@ class Task : public TaskBase {
         //! Returning suspend_always means we must manually handle lifetimes
         std::suspend_always final_suspend() noexcept { return {}; } 
 
-        //! On `co_return x` what set state. 
+        //! On `co_return x` set state. 
         void return_value (T x) {
             result_ = x;
             state_ = kComplete;
@@ -98,12 +85,15 @@ class Task : public TaskBase {
         void unhandled_exception() {}
         
         private:
-          TaskState state_;
-          
+          TaskState state_ = TaskState::kAwaiting;
+
+          // Ownership of task currently awaiting. (Delete on resumption). 
           TaskBase* awaiting_ = nullptr;
-          std::vector<TaskBase*> callbacks_;
+
+          // To be added back to queue on completion.
+          TaskBase* callback_ = nullptr; 
           
-          bool enqueued_ = false;
+          std::atomic<bool> enqueued_ = false;
 
           T result_;
         friend Task<T>;
@@ -120,7 +110,14 @@ class Task : public TaskBase {
     template <typename S>
     void await_suspend(std::coroutine_handle<S> awaitee) noexcept {
       // Propogated to workers to enqueue the awaited upon task. 
-      awaitee.promise().awaiting_ = new Task<T>{*this};
+      auto& awaitee_awaiting = awaitee.promise().awaiting_;
+
+      if (awaitee_awaiting != nullptr) {
+        delete awaitee_awaiting;
+        awaitee_awaiting = nullptr;
+      }
+      
+      awaitee_awaiting = new Task<T>{*this};
     }
 
     //! Handler for returning a value 
@@ -132,7 +129,12 @@ class Task : public TaskBase {
       co_await foo(); // the value here is the return value of await_resume();
     */
     T await_resume() const noexcept {
-      return handle_.promise().result_;
+      auto& awaiting = this->handle_.promise().awaiting_;
+      delete awaiting;
+      awaiting = nullptr;
+
+      T res = handle_.promise().result_;
+      return res;
     }
 
     //! Construct a Task from a coroutine handle.
@@ -153,21 +155,30 @@ class Task : public TaskBase {
     }
 
     virtual bool enqueued () override {
-      return this->handle_.promise().enqueued_;
+      return this->handle_.promise().enqueued_.load(std::memory_order_release);
     }
 
-    virtual void set_enqueued () override {
-      this->handle_.promise().enqueued_ = true;
+    virtual void set_enqueued_true () override {
+      this->handle_.promise().enqueued_.store(true, std::memory_order_acquire);
     }
 
-        //!
-    virtual TaskState get_state () override {
+    virtual void set_enqueued_false () override {
+      this->handle_.promise().enqueued_.store(false, std::memory_order_acquire);
+    }
+
+    //!
+    virtual TaskState get_state () const override {
       return this->handle_.promise().state_;
     }
 
     //!
-    virtual void register_callback (TaskBase* x) override {
-      this->handle_.promise().callbacks_.push_back(x->clone());
+    virtual void set_callback (TaskBase* x) override {
+      this->handle_.promise().callback_ = x;
+    }
+
+    //! 
+    virtual TaskBase* get_callback () const override {
+      return this->handle_.promise().callback_;
     }
 
     //! 
@@ -180,16 +191,8 @@ class Task : public TaskBase {
       std::cout << handle_.address() << std::endl;
     }
 
-  //private:
+  private:
     promise_type::Handle handle_;
 };
-
-template<>
-class Task<void> : public TaskBase {
-  virtual TaskState run () override {
-    return TaskState::kComplete;
-  }
-};
-
 
 } // namespace vial
