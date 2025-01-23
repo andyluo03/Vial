@@ -1,3 +1,5 @@
+#include <thread>
+
 #include "worker.hh"
 #include "queue.hh"
 #include "task.hh"
@@ -19,7 +21,7 @@ void Worker::start() {
 
         // Minimize this.
         if (task_opt == std::nullopt) { 
-            sched_yield();
+            std::this_thread::yield();
             continue; // no available tasks
         }
 
