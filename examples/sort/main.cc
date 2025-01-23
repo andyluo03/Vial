@@ -68,7 +68,7 @@ vial::Task<int> async_main () {
         }
 
         long long total = 0;
-        for (int i = 0; i < kRuns; i++) {
+        for (size_t i = 0; i < kRuns; i++) {
             auto start = std::chrono::high_resolution_clock::now();
             co_await merge_sort(&a, 0, a.size());
             auto end = std::chrono::high_resolution_clock::now();
@@ -77,7 +77,7 @@ vial::Task<int> async_main () {
 
         std::cout << "PAR: " << total / kRuns << "ns" << std::endl;
 
-        for (int i = 0; i + 1 < a.size(); i++) {
+        for (size_t i = 0; i + 1 < a.size(); i++) {
             assert(a[i] <= a[i+1]);
         }
     }
@@ -85,12 +85,12 @@ vial::Task<int> async_main () {
     {
         std::vector<int> a;
 
-        for (int i = 0; i < kTestSize; i++) {
+        for (size_t i = 0; i < kTestSize; i++) {
             a.push_back(rand() % 1000);
         }
         
         long long total = 0;
-        for (int i = 0; i < kRuns; i++) {
+        for (size_t i = 0; i < kRuns; i++) {
             auto start = std::chrono::high_resolution_clock::now();
             sort(a.begin(), a.end());
             auto end = std::chrono::high_resolution_clock::now();

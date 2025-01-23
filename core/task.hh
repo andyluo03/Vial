@@ -1,9 +1,9 @@
 #pragma once
 
 #include <coroutine>
-#include <vector>
 #include <atomic>
 #include <iostream>
+#include <type_traits>
 
 namespace vial {
 
@@ -33,7 +33,7 @@ class TaskBase {
     virtual TaskBase* clone() = 0;
 
     //! 
-    virtual bool enqueued () = 0;
+    virtual bool is_enqueued () = 0;
     virtual void set_enqueued_true () = 0;
     virtual void set_enqueued_false () = 0;
 
@@ -50,19 +50,10 @@ class TaskBase {
 };
 
 //! Task<T> wraps a std::coroutine_handle to provide callback logic. 
-template <typename T>
+template <typename T> requires (std::is_trivially_copyable<T>::value)
 class Task : public TaskBase {
   public:
-    virtual TaskState run() override {
-      handle_.resume();
-      return { handle_.promise().state_ };
-    }
-
-    virtual TaskBase* get_awaiting () const override {
-      return handle_.promise().awaiting_;
-    }
-
-    //! Underlying heap allocated state of a coroutine.
+      //! Underlying heap allocated state of a coroutine.
     struct promise_type {
       public:
         using Handle = std::coroutine_handle<promise_type>;
@@ -154,7 +145,16 @@ class Task : public TaskBase {
       return new Task<T>(*this);
     }
 
-    virtual bool enqueued () override {
+    virtual TaskState run() override {
+      handle_.resume();
+      return { handle_.promise().state_ };
+    }
+
+    virtual TaskBase* get_awaiting () const override {
+      return handle_.promise().awaiting_;
+    }
+
+    virtual bool is_enqueued () override {
       return this->handle_.promise().enqueued_.load(std::memory_order_release);
     }
 
@@ -181,14 +181,14 @@ class Task : public TaskBase {
       return this->handle_.promise().callback_;
     }
 
+    //!
+    virtual void print_promise_addr() override {
+      std::cout << handle_.address() << std::endl;
+    }
+
     //! 
     virtual void destroy () override {
       handle_.destroy();
-    }
-
-     //!
-    virtual void print_promise_addr() override {
-      std::cout << handle_.address() << std::endl;
     }
 
   private:
