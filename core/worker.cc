@@ -1,3 +1,5 @@
+#include <thread>
+
 #include "worker.hh"
 #include "queue.hh"
 #include "task.hh"
@@ -7,10 +9,7 @@ namespace vial {
 Worker::Worker(Queue<TaskBase*>* queue, std::atomic<bool>* running) : queue_{queue}, running_{running} {}
 
 //! Start a worker thread. 
-/*! 
-
-
-Life-cycle of a Task.
+/*!
 */
 void Worker::start() {
     while ( *running_ ) {
@@ -19,7 +18,7 @@ void Worker::start() {
 
         // Minimize this.
         if (task_opt == std::nullopt) { 
-            sched_yield();
+            std::this_thread::yield();
             continue; // no available tasks
         }
 
@@ -39,7 +38,7 @@ void Worker::start() {
                     assert(awaiting_on != nullptr);
 
                     // Awaiting on hasn't been spawned yet. 
-                    if (!awaiting_on->enqueued()) { 
+                    if (!awaiting_on->is_enqueued()) { 
                         task->set_enqueued_false();
 
                         awaiting_on->set_callback(task);
@@ -57,7 +56,7 @@ void Worker::start() {
                 auto callback = task->get_callback();
 
                 // Enqueue callback (if exists).
-                if (callback != nullptr && callback->enqueued() == false) {
+                if (callback != nullptr && callback->is_enqueued() == false) {
                     callback->set_enqueued_true();
                     queue_->enqueue(callback);
                     continue;

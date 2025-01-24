@@ -11,7 +11,7 @@ vial::Task<int> dummy_function () {
 
 TEST(TaskUnit, SetEnqueued) {
   vial::TaskBase* foo = new vial::Task<int>(dummy_function());
-  ASSERT_FALSE(foo->enqueued());
+  ASSERT_FALSE(foo->is_enqueued());
   foo->set_enqueued_true();
-  ASSERT_TRUE(foo->enqueued());
+  ASSERT_TRUE(foo->is_enqueued());
 }
