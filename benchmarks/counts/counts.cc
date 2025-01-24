@@ -187,8 +187,6 @@ static void BM_standard_large(benchmark::State& s) {
     }
 }
 
-
-
 BENCHMARK(BM_parallel_small);
 BENCHMARK(BM_standard_small);
 BENCHMARK(BM_parallel_medium);

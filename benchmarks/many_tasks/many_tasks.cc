@@ -1,7 +1,6 @@
 #include <benchmark/benchmark.h>
 #include <cstdlib>
 #include <vector>
-#include <iostream>
 #include <cstdlib>
 
 #include "core/scheduler.hh"
