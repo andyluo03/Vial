@@ -13,6 +13,8 @@ jobs:
             run: bazel build //...:all
           - name: Run Tests
             run: bazel test //...:all
+          - name: Produce Compilation Databse
+            run: bazel run @hedron_compile_commands//:refresh_all
           - name: Run clang-tidy
             run:  |
                 sudo apt-get install clang-tidy -y
