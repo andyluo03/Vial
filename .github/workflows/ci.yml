@@ -11,3 +11,7 @@ jobs:
             uses: bazelbuild/setup-bazelisk@v3
           - name: Build Repo
             run: bazel build //...:all
+          - name: Run Tests
+            run: bazel test //...:all
+          - name: Run clang-tidy
+            uses: HorstBaerbel/action-clang-tidy@1.2
