@@ -22,7 +22,7 @@ void Worker::start() {
             continue; // no available tasks
         }
 
-        auto task = task_opt.value();
+        auto *task = task_opt.value();
 
         if (task->get_awaiting() != nullptr && task->get_awaiting()->get_state() != TaskState::kComplete) {
             queue_->enqueue(task);
@@ -34,7 +34,7 @@ void Worker::start() {
         switch ( state ) {
             // We want this to be == to time co_await is called.
             case TaskState::kAwaiting: {
-                    auto awaiting_on = task->get_awaiting();
+                    auto *awaiting_on = task->get_awaiting();
                     assert(awaiting_on != nullptr);
 
                     // Awaiting on hasn't been spawned yet. 
@@ -53,10 +53,10 @@ void Worker::start() {
             } break;
             case TaskState::kComplete: {
                 // Push onto queue any callbacks. 
-                auto callback = task->get_callback();
+                auto *callback = task->get_callback();
 
                 // Enqueue callback (if exists).
-                if (callback != nullptr && callback->is_enqueued() == false) {
+                if (callback != nullptr && !callback->is_enqueued()) {
                     callback->set_enqueued_true();
                     queue_->enqueue(callback);
                     continue;

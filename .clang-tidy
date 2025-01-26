@@ -7,6 +7,9 @@ Checks: >
   readability-*,
   modernize-*,
   clang-analyzer-*,
+  -performance-avoid-endl,
+  -readability-identifier-length,
+  -cppcoreguidelines-owning-memory
 WarningsAsErrors: '*'
-HeaderFilterRegex: 'core/*.hh'
+HeaderFilterRegex: '.*'
 FormatStyle: google
