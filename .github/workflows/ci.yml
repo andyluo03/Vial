@@ -1,5 +1,5 @@
 name: Vial Continuous Integration
-run-name: ${{ github.actor }}
+run-name: Vial CI -- ${{ github.sha }}
 on: [push]
 jobs:
     build:
@@ -19,4 +19,4 @@ jobs:
             run:  |
                 sudo apt-get install clang-tidy -y
                 clang-tidy core/*.cc
-                clang-tidy core/*.hh 
+                clang-tidy core/*.hh
