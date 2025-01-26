@@ -71,8 +71,8 @@ void Worker::stop() {
     *running_ = false;
 }
 
-void Worker::enqueue(TaskBase* x) {
-    queue_->enqueue(x);
+void Worker::enqueue(TaskBase* task) {
+    queue_->enqueue(task);
 }
 
 };
