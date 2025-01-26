@@ -1,0 +1,12 @@
+---
+Checks: >
+  -*,
+  bugprone-*,
+  cppcoreguidelines-*,
+  performance-*,
+  readability-*,
+  modernize-*,
+  clang-analyzer-*,
+WarningsAsErrors: '*'
+HeaderFilterRegex: 'core/*.hh'
+FormatStyle: google

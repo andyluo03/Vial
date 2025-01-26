@@ -14,4 +14,8 @@ jobs:
           - name: Run Tests
             run: bazel test //...:all
           - name: Run clang-tidy
-            uses: HorstBaerbel/action-clang-tidy@1.2
+            run:  |
+                sudo apt-get install clang-tidy -y
+                cd /github/workspace
+                clang-tidy core/*.cc
+                clang-tidy core/*.hh
