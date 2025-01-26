@@ -2,31 +2,38 @@
 #include "core/async_main.hh"
 
 #include <cassert>
+#include <chrono>
 #include <iostream>
+#include <thread>
 #include <vector>
 
-vial::Task<int> foo() {
-    sleep(1);
+constexpr int kDefaultReturn = 10;
+constexpr size_t kNumPromises = 10;
 
-    co_return 10;
+auto foo() -> vial::Task<int> {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    co_return kDefaultReturn;
 }
 
-vial::Task<int> bar() {
+auto bar() -> vial::Task<int> {
     std::vector<vial::Task<int>> promises;
-    for (int i = 0; i < 10; i++) {
+    promises.reserve(kNumPromises);
+
+    for (int i = 0; i < kNumPromises; i++) {
         promises.push_back( vial::Vial.spawn_task(foo()) ); 
     }
     
     std::atomic<int> sum = 0;
 
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < kNumPromises; i++) {
         sum += co_await promises[i];
     }
 
     co_return sum.load();
 }
 
-vial::Task<int> async_main() {
+auto async_main() -> vial::Task<int> {
     auto result = vial::Vial.spawn_task(bar());
 
     std::cout << (co_await result) << std::endl;
