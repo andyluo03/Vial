@@ -16,6 +16,5 @@ jobs:
           - name: Run clang-tidy
             run:  |
                 sudo apt-get install clang-tidy -y \
-                cd /github/workspace \
                 clang-tidy core/*.cc \
                 clang-tidy core/*.hh \
