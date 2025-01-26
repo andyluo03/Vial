@@ -1,4 +1,4 @@
-cc_test (
+cc_binary (
     name="counts",
     srcs=["counts.cc"],
     deps=[

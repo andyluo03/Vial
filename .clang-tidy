@@ -1,0 +1,15 @@
+---
+Checks: >
+  -*,
+  bugprone-*,
+  cppcoreguidelines-*,
+  performance-*,
+  readability-*,
+  modernize-*,
+  clang-analyzer-*,
+  -performance-avoid-endl,
+  -readability-identifier-length,
+  -cppcoreguidelines-owning-memory
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*'
+FormatStyle: google

@@ -1,0 +1,22 @@
+name: Vial Continuous Integration
+run-name: Vial CI -- ${{ github.sha }}
+on: [push]
+jobs:
+    build:
+        runs-on: [ubuntu-latest]
+        steps:
+          - name: Checkout repo
+            uses: actions/checkout@v4
+          - name: Install Bazelisk
+            uses: bazelbuild/setup-bazelisk@v3
+          - name: Build Repo
+            run: bazel build //...:all
+          - name: Run Tests
+            run: bazel test //...:all
+          - name: Produce Compilation Databse
+            run: bazel run @hedron_compile_commands//:refresh_all
+          - name: Run clang-tidy
+            run:  |
+                sudo apt-get install clang-tidy -y
+                clang-tidy core/*.cc
+                clang-tidy core/*.hh

@@ -1,7 +1,6 @@
 #pragma once 
 
 #include <mutex>
-#include <iostream>
 #include <cassert>
 #include <optional>
 #include <queue>
@@ -15,8 +14,8 @@ class Queue {
   public:
     Queue() = default;
 
-    void enqueue(T);
-    std::optional<T> try_get();
+    void enqueue(T item);
+    auto try_get() -> std::optional<T>;
 
   private:
     std::mutex lock_;
@@ -24,16 +23,16 @@ class Queue {
 };
 
 template <typename T>
-void Queue<T>::enqueue (T a) {
+void Queue<T>::enqueue (T item) {
     std::lock_guard<std::mutex> lock(lock_);
-    contents_.push(a);
+    contents_.push(item);
 }
 
 template <typename T>
-std::optional<T> Queue<T>::try_get() {
+auto Queue<T>::try_get() -> std::optional<T> {
     std::lock_guard<std::mutex> lock(lock_);
 
-    if (contents_.size() > 0) {
+    if (!contents_.empty()) {
         T res = contents_.front();
         contents_.pop();
         return res;

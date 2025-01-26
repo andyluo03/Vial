@@ -1,4 +1,4 @@
-cc_test (
+cc_binary (
     name="many_tasks",
     srcs=["many_tasks.cc"],
     deps=[

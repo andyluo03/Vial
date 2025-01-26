@@ -11,10 +11,10 @@ class TaskBase;
 
 class Worker {
   public:
-    Worker(Queue<TaskBase*>*, std::atomic<bool>* running);
+    Worker(Queue<TaskBase*>* queue, std::atomic<bool>* running);
     void stop();
     void start();
-    void enqueue(TaskBase*);
+    void enqueue(TaskBase* task);
 
   private:
     Queue<TaskBase*>* queue_;

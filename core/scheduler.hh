@@ -12,24 +12,28 @@ namespace vial {
 class Scheduler {
   public:
     Scheduler (
-      size_t num_workers = 8
+      size_t num_workers = std::thread::hardware_concurrency()
     );
+
+    Scheduler(const Scheduler&) = delete;
+    Scheduler(const Scheduler&&) = delete;
+    auto operator=(const Scheduler&) -> Scheduler& = delete;
+    auto operator=(const Scheduler&&) -> Scheduler& = delete;
+    
+    ~Scheduler();
 
     void start();
 
     template <typename T>
-    void fire_and_forget(Task<T>);
+    void fire_and_forget(Task<T> task);
 
     template <typename T>
-    Task<T> spawn_task(Task<T>);
+    auto spawn_task(Task<T> task) -> Task<T>;
 
-    std::atomic<bool>* get_running();
-
-    ~Scheduler();
-
+    auto get_running() -> std::atomic<bool>*;
   private:
     Queue<TaskBase*> queue_;
-    Worker* worker_;
+    Worker* worker_ = nullptr;
 
     std::vector<std::thread> worker_pool_;
     size_t num_workers_;
@@ -38,17 +42,16 @@ class Scheduler {
 };
 
 template <typename T>
-void Scheduler::fire_and_forget (Task<T> x) {
-    x.set_enqueued_true();
-    queue_.enqueue(new Task<T>(x));
+void Scheduler::fire_and_forget (Task<T> task) {
+    task.set_enqueued_true();
+    queue_.enqueue(new Task<T>(task));
 }
 
 template <typename T>
-Task<T> Scheduler::spawn_task (Task<T> x) {
-  this->fire_and_forget(x);
-  return x;
+auto Scheduler::spawn_task (Task<T> task) -> Task<T> {
+  this->fire_and_forget(task);
+  return task;
 }
-
 
 
 }

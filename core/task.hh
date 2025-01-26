@@ -7,7 +7,7 @@
 
 namespace vial {
 
-enum TaskState {
+enum TaskState : std::uint8_t {
   kAwaiting,
   kComplete
 };
@@ -20,37 +20,37 @@ class TaskBase {
     // Use clone instead. 
     TaskBase(TaskBase&) = delete;
     TaskBase(TaskBase&&) = delete;
-    TaskBase& operator=(TaskBase&) = delete;
-    TaskBase& operator=(TaskBase&&) = delete;
+    auto operator=(TaskBase&) -> TaskBase& = delete;
+    auto operator=(TaskBase&&) -> TaskBase& = delete;
 
     //! Start/resume execution of the underlying coroutine.
-    virtual TaskState run () = 0;
+    virtual auto run () -> TaskState = 0;
 
     //! Get a pointer to the awaiting coroutine.
-    virtual TaskBase* get_awaiting () const = 0;
+    [[nodiscard]] virtual auto get_awaiting () const -> TaskBase* = 0;
 
     //! Get an pointer to a clone of TaskBase (points to the same underlying coroutine)
-    virtual TaskBase* clone() = 0;
+    [[nodiscard]] virtual auto clone() const -> TaskBase* = 0;
 
     //! 
-    virtual bool is_enqueued () = 0;
+    [[nodiscard]] virtual auto is_enqueued () const -> bool = 0;
     virtual void set_enqueued_true () = 0;
     virtual void set_enqueued_false () = 0;
 
-    virtual TaskState get_state () const = 0;
+    [[nodiscard]] virtual auto get_state () const -> TaskState = 0;
 
     virtual void set_callback(TaskBase*) = 0;
-    virtual TaskBase* get_callback() const = 0;
+    [[nodiscard]] virtual auto get_callback() const -> TaskBase* = 0;
 
     //! Destroys the underlying coroutine (this should happen on co_return).
     virtual void destroy() = 0;
     virtual void print_promise_addr() = 0;
 
-    virtual ~TaskBase() {}
+    virtual ~TaskBase() = default;
 };
 
 //! Task<T> wraps a std::coroutine_handle to provide callback logic. 
-template <typename T> requires (std::is_copy_constructible<T>::value)
+template <typename T> requires (std::is_copy_constructible_v<T>)
 class Task : public TaskBase {
   public:
       //! Underlying heap allocated state of a coroutine.
@@ -58,24 +58,24 @@ class Task : public TaskBase {
       public:
         using Handle = std::coroutine_handle<promise_type>;
         
-        Task<T> get_return_object() { return Task{Handle::from_promise(*this)}; }
+        auto get_return_object() -> Task<T> { return Task{Handle::from_promise(*this)}; }
 
         //!
-        std::suspend_always initial_suspend() { return {}; }
+        auto initial_suspend() -> std::suspend_always { return {}; }
 
         //! Returning suspend_always means we must manually handle lifetimes
-        std::suspend_always final_suspend() noexcept { return {}; } 
+        auto final_suspend() noexcept -> std::suspend_always { return {}; } 
 
         //! On `co_return x` set state. 
         void return_value (T x) {
-            result_ = x;
+            result_ = T(x);
             state_ = kComplete;
         }
 
         //! Handler for unhandled exceptions. 
         void unhandled_exception() {}
 
-        TaskBase*& get_awaiting() { return awaiting_; }
+        auto get_awaiting() -> TaskBase*& { return awaiting_; }
         
         private:
           TaskState state_ = TaskState::kAwaiting;
@@ -88,12 +88,12 @@ class Task : public TaskBase {
           
           std::atomic<bool> enqueued_ = false;
 
-          T result_;
+          T result_ = T();
         friend Task<T>;
     };
 
     //! Is the (outside) task ready?
-    bool await_ready () const noexcept {
+    [[nodiscard]] auto await_ready () const noexcept -> bool {
       return false;
     }
 
@@ -110,7 +110,11 @@ class Task : public TaskBase {
         awaitee_awaiting = nullptr;
       }
       
-      awaitee_awaiting = new Task<T>{*this};
+      try {
+        awaitee_awaiting = new Task<T>{*this};
+      } catch (std::exception& e) {
+        std::cerr << e.what() << std::endl;
+      }
     }
 
     //! Handler for returning a value 
@@ -121,13 +125,11 @@ class Task : public TaskBase {
 
       co_await foo(); // the value here is the return value of await_resume();
     */
-    T await_resume() const noexcept {
+    auto await_resume() noexcept -> T {
       auto& awaiting = this->handle_.promise().awaiting_;
       delete awaiting;
       awaiting = nullptr;
-
-      T res = handle_.promise().result_;
-      return res;
+      return handle_.promise().result_;
     }
 
     //! Construct a Task from a coroutine handle.
@@ -136,60 +138,71 @@ class Task : public TaskBase {
     //! Copy constructor.
     Task (const Task& other) : handle_{other.handle_} {}
 
+    //! Move constructor.
+    Task (const Task&& other)  noexcept : handle_{other.handle_} {} 
+
     //! Copy assignment operator.
-    Task& operator=(const Task& other) {
+    auto operator=(const Task& other) -> Task& {
       handle_ = other.handle_;
       return *this;
     }
 
+    //! Move assignment operator.
+    auto operator=(Task&& other) noexcept -> Task& {
+      handle_ = other.handle_;
+      return *this;
+    }
+
+    ~Task() override = default;
+
     //! Virtual clone. 
-    virtual TaskBase* clone () override {
+     [[nodiscard]] auto clone () const -> TaskBase* override {
       return new Task<T>(*this);
     }
 
-    virtual TaskState run() override {
+     auto run() -> TaskState override {
       handle_.resume();
       return { handle_.promise().state_ };
     }
 
-    virtual TaskBase* get_awaiting () const override {
+    [[nodiscard]] auto get_awaiting () const -> TaskBase* override {
       return handle_.promise().awaiting_;
     }
 
-    virtual bool is_enqueued () override {
+    [[nodiscard]] auto is_enqueued () const -> bool override {
       return this->handle_.promise().enqueued_.load(std::memory_order_release);
     }
 
-    virtual void set_enqueued_true () override {
+     void set_enqueued_true () override {
       this->handle_.promise().enqueued_.store(true, std::memory_order_acquire);
     }
 
-    virtual void set_enqueued_false () override {
+     void set_enqueued_false () override {
       this->handle_.promise().enqueued_.store(false, std::memory_order_acquire);
     }
 
     //!
-    virtual TaskState get_state () const override {
+    [[nodiscard]] auto get_state () const -> TaskState override {
       return this->handle_.promise().state_;
     }
 
     //!
-    virtual void set_callback (TaskBase* x) override {
+    void set_callback (TaskBase* x) override {
       this->handle_.promise().callback_ = x;
     }
 
     //! 
-    virtual TaskBase* get_callback () const override {
+    [[nodiscard]] auto get_callback () const -> TaskBase* override {
       return this->handle_.promise().callback_;
     }
 
     //!
-    virtual void print_promise_addr() override {
+    void print_promise_addr() override {
       std::cout << handle_.address() << std::endl;
     }
 
     //! 
-    virtual void destroy () override {
+    void destroy () override {
       handle_.destroy();
     }
 
