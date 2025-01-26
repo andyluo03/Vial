@@ -1,4 +1,4 @@
-cc_test (
+cc_binary (
     name="merge_sort",
     srcs=["merge_sort.cc"],
     deps=[
