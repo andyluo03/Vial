@@ -1,57 +1,43 @@
-#pragma once 
+#pragma once
 
-#include <thread>
 #include <vector>
+#include <thread>
 
-#include "queue.hh"
-#include "worker.hh"
 #include "task.hh"
+#include "queue.hh"
 
 namespace vial {
 
+constexpr size_t kMaxLocalTasks = 256;
+
 class Scheduler {
   public:
-    Scheduler (
-      size_t num_workers = std::thread::hardware_concurrency()
-    );
+    Scheduler(unsigned int num_workers = std::thread::hardware_concurrency());
+    auto start () -> void;
+    auto stop () -> void;
 
-    Scheduler(const Scheduler&) = delete;
-    Scheduler(const Scheduler&&) = delete;
-    auto operator=(const Scheduler&) -> Scheduler& = delete;
-    auto operator=(const Scheduler&&) -> Scheduler& = delete;
-    
-    ~Scheduler();
-
-    void start();
+    auto push_task(TaskBase* task, size_t worker_id) -> void;
 
     template <typename T>
-    void fire_and_forget(Task<T> task);
+    void fire_and_forget(Task<T> task) {
+      spawn_task(task);
+    }
 
     template <typename T>
-    auto spawn_task(Task<T> task) -> Task<T>;
+    auto spawn_task(Task<T> task) -> Task<T> {
+      task.set_enqueued_true();
+      global_queue_.push(task.clone());
+      return task;
+    }
 
-    auto get_running() -> std::atomic<bool>*;
   private:
-    Queue<TaskBase*> queue_;
-    Worker* worker_ = nullptr;
+    void run_worker (size_t worker_id);
 
-    std::vector<std::thread> worker_pool_;
+    std::vector<std::queue<TaskBase*>> queues_;
+    Queue<TaskBase*> global_queue_;
+    
+    bool running_ = false;
     size_t num_workers_;
-
-    std::atomic<bool> running_{true};
 };
 
-template <typename T>
-void Scheduler::fire_and_forget (Task<T> task) {
-    task.set_enqueued_true();
-    queue_.enqueue(new Task<T>(task));
-}
-
-template <typename T>
-auto Scheduler::spawn_task (Task<T> task) -> Task<T> {
-  this->fire_and_forget(task);
-  return task;
-}
-
-
-}
+};

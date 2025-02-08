@@ -3,5 +3,5 @@ cc_library(
     srcs = glob(["*.cc"]),
     hdrs = glob(["*.hh"]),
     visibility = ["//visibility:public"],
-    linkopts = ["-lpthread"],
+    linkopts = ["-lpthread", "-O3"],
 )

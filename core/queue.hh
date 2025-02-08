@@ -1,44 +1,39 @@
-#pragma once 
+#pragma once
 
-#include <mutex>
-#include <cassert>
-#include <optional>
 #include <queue>
+#include <mutex>
+#include <optional>
 
 namespace vial {
-
-constexpr size_t kMaxQueueSize = 16384;
 
 template <typename T>
 class Queue {
   public:
     Queue() = default;
 
-    void enqueue(T item);
-    auto try_get() -> std::optional<T>;
+    auto try_get () -> std::optional<T> {
+      std::lock_guard guard(lock_);
+
+      if (contents_.empty()) { return std::nullopt; }
+
+      T res = contents_.front();
+      contents_.pop();
+      return res;
+    }
+
+    auto push (T item) {
+      std::lock_guard guard(lock_);
+      contents_.push(item);
+    }
+
+    [[nodiscard]] auto size () const -> size_t {
+      std::lock_guard guard(lock_);
+      return contents_.size();
+    }
 
   private:
     std::mutex lock_;
     std::queue<T> contents_;
 };
 
-template <typename T>
-void Queue<T>::enqueue (T item) {
-    std::lock_guard<std::mutex> lock(lock_);
-    contents_.push(item);
-}
-
-template <typename T>
-auto Queue<T>::try_get() -> std::optional<T> {
-    std::lock_guard<std::mutex> lock(lock_);
-
-    if (!contents_.empty()) {
-        T res = contents_.front();
-        contents_.pop();
-        return res;
-    }
-
-    return std::nullopt;
-}
-
-}
+};

@@ -1,7 +1,7 @@
 cc_test(
-    name = "queue_test",
+    name = "tests",
     size = "small",
-    srcs = ["queue_test.cc"],
+    srcs = ["integration.cc"],
     deps = [
         "@googletest//:gtest",
         "@googletest//:gtest_main",
