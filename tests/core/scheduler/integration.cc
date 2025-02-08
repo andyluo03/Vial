@@ -5,7 +5,7 @@
 #include "core/task.hh"
 
 auto merge_sort (std::vector<int>& a, vial::Scheduler& scheduler, int left, int right, bool top = false) -> vial::Task<int> { //NOLINT
-    const int small = 128;
+    const int small = 8;
 
     auto mid = std::midpoint(left, right);
     auto size = right - left;
