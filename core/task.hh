@@ -28,6 +28,7 @@ class TaskBase {
 
     //! Get a pointer to the awaiting coroutine.
     [[nodiscard]] virtual auto get_awaiting () const -> TaskBase* = 0;
+    virtual auto clear_awaiting () -> void = 0;
 
     //! Get an pointer to a clone of TaskBase (points to the same underlying coroutine)
     [[nodiscard]] virtual auto clone() const -> TaskBase* = 0;
@@ -39,8 +40,8 @@ class TaskBase {
 
     [[nodiscard]] virtual auto get_state () const -> TaskState = 0;
 
-    virtual void set_callback(TaskBase*) = 0;
     [[nodiscard]] virtual auto get_callback() const -> TaskBase* = 0;
+    virtual void set_callback(TaskBase*) = 0;
 
     //! Destroys the underlying coroutine (this should happen on co_return).
     virtual void destroy() = 0;
@@ -84,7 +85,7 @@ class Task : public TaskBase {
           TaskBase* awaiting_ = nullptr;
 
           // To be added back to queue on completion.
-          TaskBase* callback_ = nullptr; 
+          TaskBase* callback_ = nullptr;
           
           std::atomic<bool> enqueued_ = false;
 
@@ -103,18 +104,8 @@ class Task : public TaskBase {
     template <typename S>
     void await_suspend(std::coroutine_handle<S> awaitee) noexcept {
       // Propogated to workers to enqueue the awaited upon task. 
-      auto& awaitee_awaiting = awaitee.promise().get_awaiting();
-
-      if (awaitee_awaiting != nullptr) {
-        delete awaitee_awaiting;
-        awaitee_awaiting = nullptr;
-      }
-      
-      try {
-        awaitee_awaiting = new Task<T>{*this};
-      } catch (std::exception& e) {
-        std::cerr << e.what() << std::endl;
-      }
+      auto& awaitee_awaiting = awaitee.promise().get_awaiting();   
+      awaitee_awaiting = this->clone(); // `this` might be lost, but `this` might also be stack allocated.
     }
 
     //! Handler for returning a value 
@@ -126,9 +117,6 @@ class Task : public TaskBase {
       co_await foo(); // the value here is the return value of await_resume();
     */
     auto await_resume() noexcept -> T {
-      auto& awaiting = this->handle_.promise().awaiting_;
-      delete awaiting;
-      awaiting = nullptr;
       return handle_.promise().result_;
     }
 
@@ -156,8 +144,8 @@ class Task : public TaskBase {
     ~Task() override = default;
 
     //! Virtual clone. 
-     [[nodiscard]] auto clone () const -> TaskBase* override {
-      return new Task<T>(*this);
+    [[nodiscard]] auto clone () const -> TaskBase* override {
+      return this->handle_.promise().owners_.back();
     }
 
      auto run() -> TaskState override {
@@ -167,6 +155,10 @@ class Task : public TaskBase {
 
     [[nodiscard]] auto get_awaiting () const -> TaskBase* override {
       return handle_.promise().awaiting_;
+    }
+
+    auto clear_awaiting () -> void override {
+      handle_.promise().awaiting_ = nullptr;
     }
 
     [[nodiscard]] auto is_enqueued () const -> bool override {
@@ -203,6 +195,10 @@ class Task : public TaskBase {
 
     //! 
     void destroy () override {
+      for (auto i : handle_.promise().owners_) {
+        delete i;
+      }
+
       handle_.destroy();
     }
 

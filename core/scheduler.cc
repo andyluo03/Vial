@@ -1,8 +1,8 @@
 #include "scheduler.hh"
 #include "core/task.hh"
-#include <atomic>
 #include <thread>
 #include <cassert>
+#include <set>
 
 namespace vial {
 
@@ -11,6 +11,7 @@ Scheduler::Scheduler(unsigned int num_workers) : num_workers_(num_workers) {
 }
 
 auto Scheduler::push_task(TaskBase* task, size_t worker_id) -> void {
+    task->set_enqueued_true();
     if (queues_[worker_id].size() > kMaxLocalTasks) {
         queues_[worker_id].push(task);
     } else {
@@ -28,9 +29,7 @@ auto Scheduler::start () -> void {
         );
     }
 
-    for (auto& i : workers) {
-        i.join();
-    }
+    for (auto& i : workers) { i.join(); }
 
     workers.clear();
 }
@@ -40,8 +39,9 @@ auto Scheduler::stop () -> void {
 }
 
 void Scheduler::run_worker(size_t worker_id) {
-    auto& local_queue = queues_[worker_id];
+    std::set<void*> poop;
 
+    auto& local_queue = queues_[worker_id];
     while (running_) {
         std::optional<TaskBase*> task_opt = local_queue.empty() ? std::nullopt : std::optional(local_queue.front());
         
@@ -49,12 +49,7 @@ void Scheduler::run_worker(size_t worker_id) {
 
         while (task_opt == std::nullopt && running_) { task_opt = global_queue_.try_get(); }
 
-        if (task_opt == std::nullopt) {
-            std::this_thread::yield();
-            continue;
-        }
-
-        if (!running_) { break; }
+        if (task_opt == std::nullopt) { continue; }
 
         TaskBase* task = task_opt.value();
 
@@ -63,20 +58,30 @@ void Scheduler::run_worker(size_t worker_id) {
             continue;
         }
 
+        TaskBase* to_delete = task->get_awaiting();
+        task->clear_awaiting();
+
         TaskState state = task->run();
+
+        if (to_delete != nullptr) {
+            to_delete->destroy();
+        }
+
+        delete to_delete;
 
         switch (state) {
             case kAwaiting: {
                 auto *awaiting = task->get_awaiting();
                 awaiting->set_callback(task);
 
+                // Awaiting wasn't spawned. 
                 if (!awaiting->is_enqueued()) {
                     this->push_task(awaiting, worker_id);
                 }
             } break;
 
             case kComplete: {
-                //global_queue_.push(task->get_callback() != nullptr ? task->get_callback() : task);
+                // On completion, a task should either push its callback or return the queue to wait for a callback.
                 this->push_task(task->get_callback() != nullptr ? task->get_callback() : task, worker_id);
             } break;
         }

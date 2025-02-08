@@ -27,7 +27,7 @@ class Scheduler {
     template <typename T>
     auto spawn_task(Task<T> task) -> Task<T> {
       task.set_enqueued_true();
-      global_queue_.push(new Task<T>(task));
+      global_queue_.push(task.clone());
       return task;
     }
 
