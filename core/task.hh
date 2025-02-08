@@ -105,7 +105,7 @@ class Task : public TaskBase {
     void await_suspend(std::coroutine_handle<S> awaitee) noexcept {
       // Propogated to workers to enqueue the awaited upon task. 
       auto& awaitee_awaiting = awaitee.promise().get_awaiting();   
-      awaitee_awaiting = new Task<T>(*this); // `this` might be lost, but `this` might also be stack allocated.
+      awaitee_awaiting = this->clone(); // `this` might be lost, but `this` might also be stack allocated.
     }
 
     //! Handler for returning a value 
@@ -145,7 +145,7 @@ class Task : public TaskBase {
 
     //! Virtual clone. 
     [[nodiscard]] auto clone () const -> TaskBase* override {
-      return new Task<T>{*this};
+      return new Task<T>{*this}; // NOLINT
     }
 
      auto run() -> TaskState override {
