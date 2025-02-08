@@ -77,7 +77,7 @@ TEST(SchedulerIntegration, MergeSortLargeSingleThreaded) {
         }
     }
 
-    EXPECT_TRUE(equal);
+   EXPECT_TRUE(equal);
 }
 
 TEST(SchedulerIntegration, MergeSortSmallMultiThreaded) {

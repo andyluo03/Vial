@@ -2,7 +2,6 @@
 
 #include <vector>
 #include <thread>
-#include <atomic>
 
 #include "task.hh"
 #include "queue.hh"

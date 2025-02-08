@@ -39,8 +39,6 @@ auto Scheduler::stop () -> void {
 }
 
 void Scheduler::run_worker(size_t worker_id) {
-    std::set<void*> poop;
-
     auto& local_queue = queues_[worker_id];
     while (running_) {
         std::optional<TaskBase*> task_opt = local_queue.empty() ? std::nullopt : std::optional(local_queue.front());
@@ -52,22 +50,20 @@ void Scheduler::run_worker(size_t worker_id) {
         if (task_opt == std::nullopt) { continue; }
 
         TaskBase* task = task_opt.value();
+        TaskState state = task->get_state();
 
-        if (task->get_state() == kComplete) {
-            this->push_task(task->get_callback() != nullptr ? task->get_callback() : task, worker_id);
-            continue;
+        if (state != kComplete) {
+            TaskBase* to_delete = task->get_awaiting();
+            task->clear_awaiting();
+
+            state = task->run();
+
+            if (to_delete != nullptr) {
+                to_delete->destroy();
+            }
+
+            delete to_delete;
         }
-
-        TaskBase* to_delete = task->get_awaiting();
-        task->clear_awaiting();
-
-        TaskState state = task->run();
-
-        if (to_delete != nullptr) {
-            to_delete->destroy();
-        }
-
-        delete to_delete;
 
         switch (state) {
             case kAwaiting: {
@@ -82,7 +78,12 @@ void Scheduler::run_worker(size_t worker_id) {
 
             case kComplete: {
                 // On completion, a task should either push its callback or return the queue to wait for a callback.
-                this->push_task(task->get_callback() != nullptr ? task->get_callback() : task, worker_id);
+                if (task->get_callback() != nullptr) {
+                    push_task(task->get_callback(), worker_id);
+                    delete task;
+                } else {
+                    push_task(task, worker_id);
+                }
             } break;
         }
     }
